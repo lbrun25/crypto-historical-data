@@ -28,6 +28,7 @@ class Config:
     interval: str
     csv_directory: str
     response_format: str
+    in_timestamp: bool
 
 
 # Functions
@@ -42,10 +43,10 @@ def binance(config):
 
     client = Client(api_key=api_key, api_secret=api_secret)
     fetch_binance_klines(client, config.from_date, config.to_date, config.symbol, config.interval,
-                         config.csv_directory, config.response_format)
+                         config.csv_directory, config.response_format, config.in_timestamp)
 
 
-def fetch_binance_klines(client, from_date, to_date, symbol, interval, csv_dir, response_format):
+def fetch_binance_klines(client, from_date, to_date, symbol, interval, csv_dir, response_format, in_timestamp):
     date_filename = '%s-to-%s' % (from_date.strftime("%d-%b-%Y"), to_date.strftime("%d-%b-%Y"))
     filename = '%s/%s-%s-%s.csv' % (csv_dir, symbol, interval, date_filename)
 
@@ -60,7 +61,8 @@ def fetch_binance_klines(client, from_date, to_date, symbol, interval, csv_dir, 
                         columns=['open_time', 'open', 'high', 'low', 'close', 'volume', 'close_time', 'quote_av',
                                  'trades', 'tb_base_av', 'tb_quote_av',
                                  'ignore'])  # tb -> Taker buy, av -> asset volume
-    data['open_time'] = pd.to_datetime(data['open_time'], unit='ms')
+    if in_timestamp is False:
+        data['open_time'] = pd.to_datetime(data['open_time'], unit='ms')
 
     if response_format == "short":
         # Delete columns to make the file lighter
@@ -115,6 +117,12 @@ def main():
                    type=str,
                    default="short",
                    help="response format of the candlestick (short|full)")
+    p.add_argument("--timestamp",
+                   dest="in_timestamp",
+                   required=False,
+                   type=bool,
+                   default=True,
+                   help="keep the date in timestamp")
 
     args = p.parse_args()
     config = Config()
@@ -126,6 +134,7 @@ def main():
     config.interval = args.interval
     config.csv_directory = args.csv_directory
     config.response_format = args.response_format
+    config.in_timestamp = args.in_timestamp
 
     if args.source == "binance":
         binance(config)
